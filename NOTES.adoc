@@ -1,0 +1,89 @@
+== Basic idea
+
+I like that cable channels have some level of curation.  I also like coming in at random points in the movie, and being able to go back to watch more is a nice plus.
+
+But watching on cable sucks because of ads and of course the lack of time-shifting (sometimes) -- yes, I get that directly contradicts the above.
+
+Idea: look at the movies in the cable TV listings and find which one(s) you can stream.
+
+More ideas:
+
+* let user choose and directly launch movie in Roku
+* real-time mode: list the movies on TV right now and estimate how far into it each one is.  When the user chooses, scroll directly to that point in the movie.  (Kind of a novelty.)
+* denylist of movies you don't want to watch
+* preference list of channels, what times movies air (I wonder if I'm more likely to want to watch movies that air on weekend afternoons)
+
+There are several resources that might help.
+
+https://www.tvmaze.com/api[TVMaze]: free HTTP API with TV listings
+
+"Movie of the Night" provides a https://rapidapi.com/movie-of-the-night-movie-of-the-night-default/api/streaming-availability/details[Streaming Availability API] that lets you query by movie and show what providers show it
+
+Roku boxes appear to provide a remote control API called https://developer.roku.com/docs/developer-program/debugging/external-control-api.md[ECP].  There's even a https://crates.io/crates/roku-ecp[Rust crate] for it.  See also https://github.com/RoseSecurity/Abusing-Roku-APIs[Roku hacking].
+
+Prototype plan:
+
+* TV listings
+** use curl (or even the browser) to download some sample TV listings
+** play with the format on the command line with `json(1)` or whatever
+* Streaming Availability
+** Pick one of the shows from the listings and use curl to query the Streaming Availability API for it.  Preferably start with one I know is on some streaming services.  Save the output since these requests are a little expensive.
+* Next level
+** Check that the output from the Streaming Availability API has the info I want
+** Write Rust code to parse the two APIs' outputs
+** Write something that prints out info about movies on the channels and days/times that I want
+** Put the whole thing together
+* Integrate with Tivo?
+* Polish
+** automatically fetch TV listings and store them
+** store / cache streaming availability to save on request count
+** keep track of when the local data 'expires'
+** maybe: report when a streaming option will go away soon
+
+== Random notes
+
+Downloading today's US schedule:
+
+[source,text]
+----
+curl -o  example-schedule-2022-03-13-US https://api.tvmaze.com/schedule
+----
+
+It looks like TVMaze is not useful for me because it really only seems to have TV shows, not movies.
+
+Another site that might be helpful, but it's super expensive and the free tier is limited: https://developer.tvmedia.ca/docs
+
+Still, that might be enough (50 calls / month, if it only takes one call to get all the listings I need for a day)
+
+Their sign-up page pointed me to a different site of theirs for personal use, https://www.xmltvlistings.com/[XML TV Listings].  It's only $5.50 / quarter, which isn't so bad.  NOTE: according to https://www.xmltvlistings.com/help/faq, you can only have 5 lineups and a maximum of 5 downloads per day.  But it does give you 14 days' worth of listings.
+
+I'm learning about these listings APIs from https://flixed.io/tv-listing-and-schedule-apis-for-developers/.
+
+Here's trying to download the listings:
+
+[source,text]
+----
+curl -i -o xmltv-lineups.out https://www.xmltvlistings.com/xmltv/get_lineups/$XMLTV_API_KEY
+----
+
+My lineups are: 6734 (Sling National) and 6735 (Comcast Digital)
+
+See https://www.xmltvlistings.com/help/api/docs[API docs].
+
+Downloading 14 days' worth of listings, starting three days ago (trying it, anyway):
+
+[source,text]
+----
+curl -i -o xmltv-listings-2022-03-13.out https://www.xmltvlistings.com/xmltv/get/$XMLTV_API_KEY/6735/14/-3
+----
+
+This hasn't completed after 60s.  Uh oh.  I'm going to try leaving off the -3.
+
+[source,text]
+----
+curl -i -o xmltv-listings-2022-03-13-2.out https://www.xmltvlistings.com/xmltv/get/$XMLTV_API_KEY/6735/14
+----
+
+This is also hanging.  I'm trying now from the web site just to make sure I get a good copy before I use up all my attempts for the day.  That took several seconds but did end up working.
+
+The first request did end up completing!  It took 4m1s.  The second one did too.  They produced the same output.
