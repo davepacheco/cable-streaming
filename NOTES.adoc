@@ -87,3 +87,5 @@ curl -i -o xmltv-listings-2022-03-13-2.out https://www.xmltvlistings.com/xmltv/g
 This is also hanging.  I'm trying now from the web site just to make sure I get a good copy before I use up all my attempts for the day.  That took several seconds but did end up working.
 
 The first request did end up completing!  It took 4m1s.  The second one did too.  They produced the same output.
+
+Best summary I found for parsing XML with Rust is https://stackoverflow.com/questions/37970355/read-xml-file-into-struct[here].
