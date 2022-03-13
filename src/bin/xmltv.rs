@@ -1,6 +1,7 @@
 use anyhow::Context;
-use cable_streaming::xmltv::{Tv, Channel};
+use cable_streaming::xmltv::{Channel, Program, Tv};
 use std::{
+    collections::BTreeMap,
     fs::File,
     io::{BufRead, BufReader},
 };
@@ -32,19 +33,29 @@ fn main() -> Result<(), anyhow::Error> {
         "VH1",
     ];
 
-    let channels: Vec<&Channel> = tv
+    let all_channels: BTreeMap<&str, &Channel> =
+        tv.channels.iter().map(|c| (c.id.as_str(), c)).collect();
+
+    // TODO should just be a BTreeSet
+    let selected_channels: BTreeMap<&str, &Channel> = tv
         .channels
         .iter()
-        .filter(|c| filters.iter().any(|f| *f == c.callsign()))
+        .filter_map(|c| {
+            filters
+                .iter()
+                .any(|f| *f == c.callsign())
+                .then(|| (c.id.as_str(), c))
+        })
         .collect();
     println!("selected channels:");
-    for c in &channels {
+    for (_, c) in &selected_channels {
         print_channel(c);
     }
 
     println!("movies found on these channels:");
+    let mut found_movies: BTreeMap<&str, Vec<&Program>> = BTreeMap::new();
     for p in &tv.programs {
-        if !channels.iter().any(|c| c.id == p.channel) {
+        if !selected_channels.contains_key(p.channel.as_str()) {
             continue;
         }
 
@@ -52,8 +63,40 @@ fn main() -> Result<(), anyhow::Error> {
             continue;
         }
 
-        println!("    {}", p.title);
+        found_movies
+            .entry(p.title.as_str())
+            .or_insert_with(|| Vec::new())
+            .push(&p);
     }
+
+    for (title, programs) in found_movies.iter() {
+        let mut showings_by_channel: BTreeMap<&str, u16> = BTreeMap::new();
+        let mut total = 0;
+
+        for p in programs {
+            let c: &mut u16 =
+                showings_by_channel.entry(p.channel.as_str()).or_insert(0);
+            *c = *c + 1;
+            total = total + 1;
+        }
+
+        let max_entry =
+            showings_by_channel.iter().max_by_key(|(_, count)| *count).unwrap();
+        let max_channel = all_channels.get(max_entry.0).unwrap(); // XXX
+
+        println!(
+            "{:40} {:2} showings on {:2} channels, \
+            including {:2} showings on {}",
+            title,
+            total,
+            showings_by_channel.len(),
+            max_entry.1,
+            max_channel.callsign(),
+        );
+    }
+
+    // TODO next steps: parse showing times and filter for weekend
+    // afternoon/evenings?
 
     Ok(())
 }

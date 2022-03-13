@@ -15,14 +15,8 @@ pub mod xmltv {
     #[derive(Debug, Deserialize)]
     pub struct Channel {
         pub id: String,
-        //#[serde(rename = "display-name")]
-        //pub full_name: String,
-        //#[serde(rename = "display-name")]
-        //pub call_sign: String,
-        //#[serde(rename = "display-name")]
-        //pub channel_number: u16,
         #[serde(rename = "display-name")]
-        pub display_names: [String;3],
+        pub display_names: [String; 3],
     }
 
     impl Channel {
