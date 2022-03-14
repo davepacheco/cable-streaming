@@ -1,5 +1,6 @@
 use anyhow::Context;
 use cable_streaming::xmltv::{Channel, Program, Tv};
+use chrono::Datelike;
 use std::{
     collections::BTreeMap,
     fs::File,
@@ -52,7 +53,7 @@ fn main() -> Result<(), anyhow::Error> {
         print_channel(c);
     }
 
-    println!("movies found on these channels:");
+    // Filter movies based on basic criteria.  Dedup them into "found_movies".
     let mut found_movies: BTreeMap<&str, Vec<&Program>> = BTreeMap::new();
     for p in &tv.programs {
         if !selected_channels.contains_key(p.channel.as_str()) {
@@ -69,6 +70,22 @@ fn main() -> Result<(), anyhow::Error> {
             .push(&p);
     }
 
+    // Filter out movies based on not having any showtimes during our preferred
+    // range.
+    let found_movies: BTreeMap<&str, Vec<&Program>> = found_movies
+        .into_iter()
+        .filter(|(_, showtimes)| {
+            showtimes.iter().any(|p| {
+                matches!(
+                    p.start.weekday(),
+                    chrono::Weekday::Sat | chrono::Weekday::Sun
+                )
+            })
+        })
+        .collect();
+
+    println!("movies found on these channels on weekends:");
+    println!("{:40} #SHOW #CH EXAMPLE", "");
     for (title, programs) in found_movies.iter() {
         let mut showings_by_channel: BTreeMap<&str, u16> = BTreeMap::new();
         let mut total = 0;
@@ -85,18 +102,14 @@ fn main() -> Result<(), anyhow::Error> {
         let max_channel = all_channels.get(max_entry.0).unwrap(); // XXX
 
         println!(
-            "{:40} {:2} showings on {:2} channels, \
-            including {:2} showings on {}",
+            "{:60} {:5} {:3} {:8} ({:2})",
             title,
             total,
             showings_by_channel.len(),
-            max_entry.1,
             max_channel.callsign(),
+            max_entry.1,
         );
     }
-
-    // TODO next steps: parse showing times and filter for weekend
-    // afternoon/evenings?
 
     Ok(())
 }
