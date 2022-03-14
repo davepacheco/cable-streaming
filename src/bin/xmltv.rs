@@ -1,5 +1,5 @@
 use anyhow::Context;
-use cable_streaming::xmltv::{Channel, Program, Tv};
+use cable_streaming::{xmltv::{Channel, Program, Tv}, mdblist::prune};
 use chrono::Datelike;
 use std::{
     collections::BTreeMap,
@@ -7,7 +7,8 @@ use std::{
     io::{BufRead, BufReader},
 };
 
-fn main() -> Result<(), anyhow::Error> {
+#[tokio::main]
+async fn main() -> Result<(), anyhow::Error> {
     let filename = "local-data/xmltv-listings-2022-03-13.out";
     let file_reader =
         File::open(filename).with_context(|| format!("open {:?}", filename))?;
@@ -85,7 +86,7 @@ fn main() -> Result<(), anyhow::Error> {
         .collect();
 
     println!("movies found on these channels on weekends:");
-    println!("{:40} #SHOW #CH EXAMPLE", "");
+    println!("{:60} #SHOW #CH EXAMPLE", "");
     for (title, programs) in found_movies.iter() {
         let mut showings_by_channel: BTreeMap<&str, u16> = BTreeMap::new();
         let mut total = 0;
@@ -109,6 +110,58 @@ fn main() -> Result<(), anyhow::Error> {
             max_channel.callsign(),
             max_entry.1,
         );
+    }
+
+    let mut results = Vec::new();
+    // XXX copied/pasted from mdblist.rs -- instead, the above should be
+    // factored into src/lib.rs and this should go into a new program
+    let creds_path = "creds.toml";
+    let creds_file = std::fs::read_to_string(creds_path)
+        .with_context(|| format!("open {:?}", creds_path))?;
+    let creds: cable_streaming::Credentials = toml::from_str(&creds_file)
+        .with_context(|| format!("parse {:?}", creds_path))?;
+    let mdblist = cable_streaming::mdblist::Client::new(&creds.rapidapi_key)?;
+    let sa = cable_streaming::streaming_availability::Client::new(
+        &creds.rapidapi_key,
+    )?;
+    for (title, _) in found_movies.iter() {
+        eprintln!("looking up title {:?}", title);
+        let mdblist = match mdblist.title_lookup(title).await {
+            Ok(o) => prune(&o),
+            Err(error) => {
+                eprintln!("error: {:?}", error);
+                continue;
+            }
+        };
+
+        eprintln!("matches: {}", mdblist.len());
+        if mdblist.len() == 0 {
+            continue;
+        }
+
+        let imdbid = &mdblist.first().unwrap().imdbid;
+        let avail = match sa.lookup(imdbid).await {
+            Ok(a) => a,
+            Err(error) => {
+                eprintln!("error: {:?}", error);
+                continue;
+            }
+        };
+
+        let services = avail.services();
+        eprintln!("services: {}", services.join(", "));
+        if services.len() > 0 {
+            results.push(format!("{:60} {}", title, services.join(", ")));
+            if results.len() == 10 {
+                break;
+            } else {
+                eprintln!("waiting for {} more", results.len());
+            }
+        }
+    }
+
+    for r in results {
+        println!("{}", r);
     }
 
     Ok(())

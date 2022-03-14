@@ -99,3 +99,5 @@ I have signed up for the free tier of the "Streaming Availability" API and start
 When I have time: flesh out these CLI programs -- they could be much more general and useful without a lot more work.
 
 Next step: pull it all together.  Will need to either prune the list of movies, cache aggressively, or sign up for the $10/month tier for a month to avoid hitting the 100/day cap for the Streaming Availability API.
+
+I've done a lazy job of this in "xmltv" but this should really be a separate command and I need to debug some problems parsing mdblist responses.  I've saved the contents locally.

@@ -60,8 +60,10 @@ impl Client {
             );
         }
 
+        let response_text =
+            response.text().await.context("reading mdblist response body")?;
         let result: SearchResult =
-            response.json().await.context("parsing mdblist response body")?;
+            serde_json::from_str(&response_text).with_context(|| format!("parsing mdblist response body:\n----\n{}\n----\n", response_text))?;
         Ok(result.search)
     }
 }
