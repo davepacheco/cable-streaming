@@ -62,8 +62,13 @@ impl Client {
 
         let response_text =
             response.text().await.context("reading mdblist response body")?;
-        let result: SearchResult =
-            serde_json::from_str(&response_text).with_context(|| format!("parsing mdblist response body:\n----\n{}\n----\n", response_text))?;
+        let result: SearchResult = serde_json::from_str(&response_text)
+            .with_context(|| {
+                format!(
+                    "parsing mdblist response body:\n----\n{}\n----\n",
+                    response_text
+                )
+            })?;
         Ok(result.search)
     }
 }
@@ -76,7 +81,7 @@ pub struct Match {
     pub score: i16,
     #[serde(rename = "type")]
     type_name: String,
-    pub imdbid: String,
+    pub imdbid: Option<String>,
     pub traktid: u64,
 }
 
@@ -90,6 +95,9 @@ struct SearchResult {
 pub fn prune(results: &[Match]) -> Vec<Match> {
     results
         .into_iter()
-        .filter_map(|m| (m.year.is_some() && m.score > 0).then(|| m.clone()))
+        .filter_map(|m| {
+            (m.year.is_some() && m.imdbid.is_some() && m.score > 0)
+                .then(|| m.clone())
+        })
         .collect()
 }

@@ -139,7 +139,7 @@ async fn main() -> Result<(), anyhow::Error> {
             continue;
         }
 
-        let imdbid = &mdblist.first().unwrap().imdbid;
+        let imdbid = &mdblist.first().unwrap().imdbid.as_ref().unwrap();
         let avail = match sa.lookup(imdbid).await {
             Ok(a) => a,
             Err(error) => {
@@ -152,10 +152,10 @@ async fn main() -> Result<(), anyhow::Error> {
         eprintln!("services: {}", services.join(", "));
         if services.len() > 0 {
             results.push(format!("{:60} {}", title, services.join(", ")));
-            if results.len() == 10 {
+            if results.len() == 5 {
                 break;
             } else {
-                eprintln!("waiting for {} more", results.len());
+                eprintln!("waiting for {} more", 5 - results.len());
             }
         }
     }

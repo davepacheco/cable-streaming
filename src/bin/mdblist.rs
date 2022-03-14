@@ -19,7 +19,7 @@ async fn main() -> Result<(), anyhow::Error> {
     println!("matches: {}", results.len());
     for m in results {
         println!("    score = {}, imdbid = {}, year = {}, title = {}",
-            m.score, m.imdbid, m.year.unwrap(), m.title);
+            m.score, m.imdbid.unwrap(), m.year.unwrap(), m.title);
     }
     Ok(())
 }
