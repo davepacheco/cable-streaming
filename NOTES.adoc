@@ -89,3 +89,13 @@ This is also hanging.  I'm trying now from the web site just to make sure I get 
 The first request did end up completing!  It took 4m1s.  The second one did too.  They produced the same output.
 
 Best summary I found for parsing XML with Rust is https://stackoverflow.com/questions/37970355/read-xml-file-into-struct[here].
+
+The format for the XMLTV files is summarized https://www.xmltvlistings.com/help/api/xmltv[here].
+
+I found that I can only query the Streaming Availability API by TMDb ID or IMDb ID.  But all the listings API provides is titles.  To join these, I found https://rapidapi.com/linaspurinis/api/mdblist/[this API], which is at least cheap (and free up to 100 requests per day, which covers almost as many as I need).  For $1/month, I get $10K / day and 5 per second, so I'm going to do that just to avoid having to deal with throttling and limiting.
+
+I have signed up for the free tier of the "Streaming Availability" API and started building a little client for that.
+
+Next step: pull in the actual streaming data from that API.
+
+Then: pull it all together.  Will need to either prune the list of movies, cache aggressively, or sign up for the $10/month tier for a month to avoid hitting the 100/day cap for the Streaming Availability API.
