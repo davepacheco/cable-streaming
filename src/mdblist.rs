@@ -93,11 +93,13 @@ struct SearchResult {
 }
 
 pub fn prune(results: &[Match]) -> Vec<Match> {
-    results
+    let mut rv: Vec<Match> = results
         .into_iter()
         .filter_map(|m| {
             (m.year.is_some() && m.imdbid.is_some() && m.score > 0)
                 .then(|| m.clone())
         })
-        .collect()
+        .collect();
+    rv.sort_by(|m1, m2| m2.score.cmp(&m1.score));
+    rv
 }
