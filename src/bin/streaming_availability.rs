@@ -20,5 +20,6 @@ async fn main() -> Result<(), anyhow::Error> {
 
     println!("query: {:?}", imdbid);
     println!("result: {:?}", result);
+    println!("services: {}", result.services().join(", "));
     Ok(())
 }

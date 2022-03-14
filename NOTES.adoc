@@ -96,8 +96,6 @@ I found that I can only query the Streaming Availability API by TMDb ID or IMDb 
 
 I have signed up for the free tier of the "Streaming Availability" API and started building a little client for that.
 
-Next step: pull in the actual streaming data from that API.
-
 When I have time: flesh out these CLI programs -- they could be much more general and useful without a lot more work.
 
-Then: pull it all together.  Will need to either prune the list of movies, cache aggressively, or sign up for the $10/month tier for a month to avoid hitting the 100/day cap for the Streaming Availability API.
+Next step: pull it all together.  Will need to either prune the list of movies, cache aggressively, or sign up for the $10/month tier for a month to avoid hitting the 100/day cap for the Streaming Availability API.

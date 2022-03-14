@@ -3,6 +3,8 @@
 
 // TODO commonize with mdblist API client
 
+use std::collections::BTreeMap;
+
 use anyhow::bail;
 use anyhow::Context;
 use http::HeaderValue;
@@ -91,19 +93,18 @@ pub struct Availability {
     title: String,
     overview: String,
     tagline: String,
-    streaming_info: Streaming,
+    streaming_info: BTreeMap<String, BTreeMap<String, Streaming>>,
+}
+
+impl Availability {
+    pub fn services(&self) -> Vec<String> {
+        self.streaming_info.keys().cloned().collect()
+    }
 }
 
 #[derive(Clone, Debug, Deserialize)]
 struct Streaming {
-    // XXX working here: fill this in
-    // See local-data
-    // Example:
-    // "hulu": {
-    //  "us": {
-    //    "link": "https://www.hulu.com/movie/805ca580-3372-4f7b-be6e-aecc78c2599f",
-    //    "added": 1641121011,
-    //    "leaving": 1648796340
-    //  }
-    //},
+    link: String,
+    added: u64,     // TODO looks like a Unix timestamp
+    leaving: u64,   // TODO looks like a Unix timestamp
 }
