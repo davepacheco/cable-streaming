@@ -1,18 +1,24 @@
-use anyhow::Context;
+use clap::Parser;
+use std::path::PathBuf;
+
+#[derive(Parser)]
+/// low-level tool for querying Streaming Availbility API by IMDb id
+struct Sa {
+    #[clap(long, default_value = "creds.toml")]
+    /// path to file containing credentials for these tools
+    cred_file: PathBuf,
+    /// IMDB id of movie to search for (e.g., tt4846340)
+    imdb_id: String,
+}
 
 // TODO commonize with mdblist
 
 #[tokio::main]
 async fn main() -> Result<(), anyhow::Error> {
-    let creds_path = "creds.toml";
-    let creds_file = std::fs::read_to_string(creds_path)
-        .with_context(|| format!("open {:?}", creds_path))?;
-    let creds: cable_streaming::Credentials = toml::from_str(&creds_file)
-        .with_context(|| format!("parse {:?}", creds_path))?;
-
-    // TODO command-line argument
-    // let imdbid = "tt0104257"; // "A Few Good Men"
-    let imdbid = "tt1605783"; // "Midnight in Paris" (on Netflix)
+    let sa = Sa::parse();
+    let creds =
+        cable_streaming::credentials::Credentials::from_file(&sa.cred_file)?;
+    let imdbid = &sa.imdb_id;
     let client = cable_streaming::streaming_availability::Client::new(
         &creds.rapidapi_key,
     )?;
