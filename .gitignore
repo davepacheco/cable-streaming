@@ -1,3 +1,4 @@
 /target
-local-data
+cache.db
 creds.toml
+local-data

@@ -1,9 +1,13 @@
 use clap::Parser;
 use std::path::PathBuf;
+use std::sync::Arc;
 
 #[derive(Parser)]
 /// low-level tool for querying Streaming Availbility API by IMDb id
 struct Sa {
+    #[clap(long, default_value = "cache.db")]
+    /// path to file to be used for caching API responses
+    cache_file: PathBuf,
     #[clap(long, default_value = "creds.toml")]
     /// path to file containing credentials for these tools
     cred_file: PathBuf,
@@ -19,8 +23,10 @@ async fn main() -> Result<(), anyhow::Error> {
     let creds =
         cable_streaming::credentials::Credentials::from_file(&sa.cred_file)?;
     let imdbid = &sa.imdb_id;
+    let cache = cable_streaming::cache::RequestCache::new(&sa.cache_file)?;
     let client = cable_streaming::streaming_availability::Client::new(
         &creds.rapidapi_key,
+        Arc::new(cache),
     )?;
     let result = client.lookup(imdbid).await?;
 
