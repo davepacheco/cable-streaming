@@ -1,10 +1,15 @@
 use anyhow::Context;
-use cable_streaming::{xmltv::{Channel, Program, Tv}, mdblist::prune};
+use cable_streaming::{
+    mdblist::prune,
+    xmltv::{Channel, Program, Tv},
+};
 use chrono::Datelike;
 use std::{
     collections::BTreeMap,
     fs::File,
     io::{BufRead, BufReader},
+    path::Path,
+    sync::Arc,
 };
 
 #[tokio::main]
@@ -115,15 +120,22 @@ async fn main() -> Result<(), anyhow::Error> {
     let mut results = Vec::new();
     // XXX copied/pasted from mdblist.rs -- instead, the above should be
     // factored into src/lib.rs and this should go into a new program
-    let creds_path = "creds.toml";
-    let creds_file = std::fs::read_to_string(creds_path)
-        .with_context(|| format!("open {:?}", creds_path))?;
-    let creds: cable_streaming::Credentials = toml::from_str(&creds_file)
-        .with_context(|| format!("parse {:?}", creds_path))?;
-    let mdblist = cable_streaming::mdblist::Client::new(&creds.rapidapi_key)?;
+    let creds_path = Path::new("creds.toml");
+    let creds =
+        cable_streaming::credentials::Credentials::from_file(creds_path)
+            .with_context(|| format!("parse {:?}", creds_path))?;
+    let cache_path = Path::new("cache.db");
+    let cache =
+        Arc::new(cable_streaming::cache::RequestCache::new(cache_path)?);
+    let mdblist = cable_streaming::mdblist::Client::new(
+        &creds.rapidapi_key,
+        Arc::clone(&cache),
+    )?;
     let sa = cable_streaming::streaming_availability::Client::new(
         &creds.rapidapi_key,
+        cache,
     )?;
+    let max = 150usize;
     for (title, _) in found_movies.iter() {
         eprintln!("looking up title {:?}", title);
         let mdblist = match mdblist.title_lookup(title).await {
@@ -152,10 +164,10 @@ async fn main() -> Result<(), anyhow::Error> {
         eprintln!("services: {}", services.join(", "));
         if services.len() > 0 {
             results.push(format!("{:60} {}", title, services.join(", ")));
-            if results.len() == 5 {
+            if results.len() == max {
                 break;
             } else {
-                eprintln!("waiting for {} more", 5 - results.len());
+                eprintln!("waiting for {} more", max - results.len());
             }
         }
     }
