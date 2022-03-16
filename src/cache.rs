@@ -36,6 +36,7 @@ impl RequestCache {
             .get(&key)
             .with_context(|| format!("looking up cache key {:?}", key))?;
         if let Some(serialized) = cached_response {
+            // TODO expire old cache entries
             eprintln!("cache hit");
             return Ok(serde_json::from_slice(&serialized)
                 .context("deserializing cached response")?);

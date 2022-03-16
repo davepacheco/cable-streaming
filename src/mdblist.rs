@@ -1,19 +1,24 @@
 //! Client interfaces for MDBList API
 //! See https://rapidapi.com/linaspurinis/api/mdblist/
 
-use anyhow::bail;
+use crate::cache::RequestCache;
 use anyhow::Context;
 use http::HeaderValue;
 use serde::Deserialize;
+use std::sync::Arc;
 
 const API_HOST: &str = "mdblist.p.rapidapi.com";
 
 pub struct Client {
     reqwest: reqwest::Client,
+    request_cache: Arc<RequestCache>,
 }
 
 impl Client {
-    pub fn new(api_key: &str) -> Result<Client, anyhow::Error> {
+    pub fn new(
+        api_key: &str,
+        request_cache: Arc<RequestCache>,
+    ) -> Result<Client, anyhow::Error> {
         let mut headers = http::HeaderMap::new();
         headers.insert("x-rapidapi-host", HeaderValue::from_static(API_HOST));
         headers.insert(
@@ -27,7 +32,7 @@ impl Client {
             .build()
             .context("initializing reqwest client")?;
 
-        Ok(Client { reqwest })
+        Ok(Client { reqwest, request_cache })
     }
 
     pub async fn title_lookup(
@@ -40,34 +45,12 @@ impl Client {
         url.query_pairs_mut()
             .append_pair("s", &format!("\"{}\"", title))
             .append_pair("m", "movie");
-        let request =
-            self.reqwest.get(url).build().context("failed to build request")?;
-        let response = self
-            .reqwest
-            .execute(request)
-            .await
-            .with_context(|| format!("querying mdblist for {:?}", title))?;
-        let status = response.status();
-        if !status.is_success() {
-            let response_body =
-                response.text().await.context("error reading response body")?;
-            bail!(
-                "unexpected error querying mdblist for {:?}: \
-                status {}, body {:?}",
-                title,
-                status,
-                response_body,
-            );
-        }
 
-        let response_text =
-            response.text().await.context("reading mdblist response body")?;
-        let result: SearchResult = serde_json::from_str(&response_text)
+        let url_str = url.as_str().to_string();
+        let response = self.request_cache.request(&self.reqwest, url).await?;
+        let result: SearchResult = serde_json::from_str(&response.body)
             .with_context(|| {
-                format!(
-                    "parsing mdblist response body:\n----\n{}\n----\n",
-                    response_text
-                )
+                format!("deserializing response for {:?}", url_str)
             })?;
         Ok(result.search)
     }
